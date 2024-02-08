@@ -40,14 +40,14 @@ const
 proc `$` (e: Episode): string =
     result = fmt"""
     title           : "{e.title}"
-    number          : $e.number
+    number          : {$e.number}
     special         : "{e.special}"
-    date            : "{format(e.date, timef)}"
-    date_add        : "{format(e.date, timec)}"
-    favourite       : $e.favourite
-    watched         : $e.watched
-    downloaded      : $e.downloaded
-    checked_quality : $e.checked_quality
+    date            : "{format(e.date,  timef)}"
+    date_add        : "{format(e.datec, timec)}"
+    favourite       : {$e.favourite}
+    watched         : {$e.watched}
+    downloaded      : {$e.downloaded}
+    checked_quality : {$e.checked_quality}
     """.unindent
 
 proc alphSort (x, y: string): int =
@@ -117,7 +117,9 @@ let main   = newLayoutContainer(Layout_Vertical)
 let picker = newLayoutContainer(Layout_Horizontal)
 let viewer = newLayoutContainer(Layout_Horizontal)
 let editer = newLayoutContainer(Layout_Vertical)
+let bditer = newLayoutContainer(Layout_Horizontal)
 let info   = newLayoutContainer(Layout_Vertical)
+let switch = newLayoutContainer(Layout_Vertical)
 let adder  = newLayoutContainer(Layout_Horizontal)
 
 let list_seasons   = newComboBox(seasons)
@@ -141,15 +143,20 @@ let add_ep_date_y  = newTextBox("")
 let add_ep_date_m  = newTextBox("")
 let add_ep_date_d  = newTextBox("")
 let add_ep         = newButton("Add")
+# buttons
+let bt_watched = newButton("Watched?")
+let bt_faved   = newButton("Favourited?")
 
 block settings:
   win.width  = 900
   win.height = 600
-  info.width = 200
+  info.width = 100
+  switch.width = 150
   ep_picker.width = 400
   picker.frame  = newFrame("Season picker")
   adder.frame   = newFrame("Add new episode")
   info.frame    = newFrame("Info")
+  switch.frame  = newFrame("Change status")
   editer.xAlign = XAlign_Left
   add_ep_number.placeholder  = "Number*"
   add_ep_special.placeholder = "Special"
@@ -169,13 +176,19 @@ block registry:
   viewer.add(season_summary)
   viewer.add(editer)
   editer.add(ep_picker)
-  editer.add(info)
-  info.add(ep_favourited)
-  info.add(ep_watched)
-  if hc_data.download:
-    info.add(ep_downloaded)
-  if hc_data.quality:
-    info.add(ep_checked)
+  editer.add(bditer)
+  block bInfo:
+    bditer.add(info)
+    info.add(ep_favourited)
+    info.add(ep_watched)
+    if hc_data.download:
+      info.add(ep_downloaded)
+    if hc_data.quality:
+      info.add(ep_checked)
+  block bSwitch:
+    bditer.add(switch)
+    switch.add(bt_watched)
+    switch.add(bt_faved)
   main.add(adder)
   adder.add(add_ep_season)
   adder.add(add_ep_hermit)
@@ -209,10 +222,13 @@ proc generateSeason (seasonNb: string, f_watched = check_watched.checked) =
       cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
   ep_picker.options = cbox
 
-proc updateEntry (entry: string) =
-  if "|" in entry: # avoids None and other edge cases
-    let data = split(entry, re"\| |: | - ")
-    let info = newEpisode(fmt"data/{data[0]}/{data[1]}/{data[2]} - {data[3]}.ini", data[1])
+proc parseComboboxEntry (entry: string): Episode =
+  let data = split(entry, re"\| |: | - ")
+  return newEpisode(fmt"data/{data[0]}/{data[1]}/{data[2]} - {data[3]}.ini", data[1])
+
+proc updateEntry () =
+  if "|" in ep_picker.value: # avoids None and other edge cases
+    let info = parseComboboxEntry(ep_picker.value)
     case info.favourite:
       of true:  ep_favourited.text = "Favourite"
       of false: ep_favourited.text = ""
@@ -227,6 +243,11 @@ proc updateEntry (entry: string) =
       case info.checked_quality:
         of true:  ep_checked.text = "Quality checked"
         of false: ep_checked.text = "Quality unknown"
+  else:
+    ep_favourited.text = ""
+    ep_watched.text    = ""
+    ep_downloaded.text = ""
+    ep_checked.text    = ""
 
 proc saveEntry (ep: Episode, season: string) =
   discard existsOrCreateDir(fmt"data/{season}/{ep.hermit}/")
@@ -235,13 +256,14 @@ proc saveEntry (ep: Episode, season: string) =
 list_seasons.onChange = proc (event: ComboBoxChangeEvent) =
   list_hermits.options = walkHermits(fmt"data\{list_seasons.value}\").toSeq
   generateSeason(list_seasons.value)
+  updateEntry()
 
 list_hermits.onChange = proc (event: ComboBoxChangeEvent) =
   generateSeason(list_seasons.value)
+  updateEntry()
 
 ep_picker.onChange = proc (event: ComboBoxChangeEvent) =
-  echo ep_picker.value
-  updateEntry(ep_picker.value)
+  updateEntry()
 
 add_ep.onClick = proc (event: ClickEvent) =
   proc processTitle (title: string): string =
@@ -282,12 +304,28 @@ add_ep.onClick = proc (event: ClickEvent) =
 
     generateSeason(list_seasons.value)
 
+bt_watched.onClick = proc (event: ClickEvent) =
+  if "|" in ep_picker.value: # avoids None and other edge cases
+    var ep = parseComboboxEntry(ep_picker.value)
+    ep.watched = not ep.watched
+    saveEntry(ep, list_seasons.value)
+    generateSeason(list_seasons.value)
+    updateEntry()
+
+bt_faved.onClick = proc (event: ClickEvent) =
+  if "|" in ep_picker.value: # avoids None and other edge cases
+    var ep = parseComboboxEntry(ep_picker.value)
+    ep.favourite = not ep.favourite
+    saveEntry(ep, list_seasons.value)
+    generateSeason(list_seasons.value)
+    updateEntry()
+
 check_watched.onToggle = proc (event: ToggleEvent) =
   generateSeason(list_seasons.value)
-  updateEntry(ep_picker.value)
+  updateEntry()
 
 generateSeason(list_seasons.value)
-updateEntry(ep_picker.value)
+updateEntry()
 
 win.show()
 app.run()
