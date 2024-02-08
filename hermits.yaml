@@ -30,5 +30,5 @@ hermits:
   - xBcrafted
   - Xisuma
   - Zedaph
-download: true
+download: false
 quality: false

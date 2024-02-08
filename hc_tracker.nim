@@ -114,7 +114,9 @@ block varSupplying:
 let win = newWindow("HermitCraft Tracker (v1)")
 
 let main   = newLayoutContainer(Layout_Vertical)
+let upper  = newLayoutContainer(Layout_Horizontal)
 let picker = newLayoutContainer(Layout_Horizontal)
+let filter = newLayoutContainer(Layout_Horizontal)
 let viewer = newLayoutContainer(Layout_Horizontal)
 let editer = newLayoutContainer(Layout_Vertical)
 let bditer = newLayoutContainer(Layout_Horizontal)
@@ -133,6 +135,7 @@ let ep_downloaded  = newLabel("- ~~~~~~~~~~~~ -")
 let ep_checked     = newLabel("- ~~~~~~~~~~~~ -")
 # checkboxes
 let check_watched  = newCheckbox("Show only unwatched")
+let check_faved    = newCheckbox("Show only favourited")
 # adding episode
 let add_ep_season  = newComboBox(seasons)
 let add_ep_hermit  = newComboBox(hc_data.hermits)
@@ -153,11 +156,15 @@ block settings:
   info.width = 100
   switch.width = 150
   ep_picker.width = 400
+  bt_watched.width = 100
+  bt_faved.width   = 100
   picker.frame  = newFrame("Season picker")
+  filter.frame  = newFrame("Filtering")
   adder.frame   = newFrame("Add new episode")
   info.frame    = newFrame("Info")
   switch.frame  = newFrame("Change status")
   editer.xAlign = XAlign_Left
+  switch.xAlign = XAlign_Center
   add_ep_number.placeholder  = "Number*"
   add_ep_special.placeholder = "Special"
   add_ep_title.placeholder   = "Title"
@@ -168,10 +175,15 @@ block settings:
 
 block registry:
   win.add(main)
-  main.add(picker)
-  picker.add(list_seasons)
-  picker.add(list_hermits)
-  picker.add(check_watched)
+  main.add(upper)
+  block bPicker:
+    upper.add(picker)
+    picker.add(list_seasons)
+    picker.add(list_hermits)
+  block bFilter:
+    upper.add(filter)
+    filter.add(check_watched)
+    filter.add(check_faved)
   main.add(viewer)
   viewer.add(season_summary)
   viewer.add(editer)
@@ -200,7 +212,7 @@ block registry:
   adder.add(add_ep_date_d)
   adder.add(add_ep)
 
-proc generateSeason (seasonNb: string, f_watched = check_watched.checked) =
+proc generateSeason (seasonNb: string, f_watched = check_watched.checked, f_faved = check_faved.checked) =
   # resetting old entry
   season_summary.text = ""
   eps_shown.setLen(0)
@@ -217,7 +229,7 @@ proc generateSeason (seasonNb: string, f_watched = check_watched.checked) =
   eps_shown.sort(entrySort)
 
   for e in eps_shown:
-    if not (f_watched and e.watched):
+    if not (f_watched and e.watched) and not (f_faved and not e.favourite):
       season_summary.addLine(fmt"{e.hermit} - {e.number}: {e.title} | {e.date.month}, {e.date.monthday}") #  | {conversion[e.watched]}:{conversion[e.downloaded]}:{conversion[e.checked_quality]}
       cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
   ep_picker.options = cbox
@@ -321,6 +333,10 @@ bt_faved.onClick = proc (event: ClickEvent) =
     updateEntry()
 
 check_watched.onToggle = proc (event: ToggleEvent) =
+  generateSeason(list_seasons.value)
+  updateEntry()
+
+check_faved.onToggle = proc (event: ToggleEvent) =
   generateSeason(list_seasons.value)
   updateEntry()
 
