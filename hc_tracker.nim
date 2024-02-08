@@ -22,10 +22,10 @@ type
     special         : string
     date            : DateTime # date of episode
     datec           : DateTime # date of adding episode
+    favourite       : bool
     watched         : bool
     downloaded      : bool
     checked_quality : bool
-    favourite       : bool
 
   Data = object
     seasons  : seq[string]
@@ -38,7 +38,17 @@ const
   timec = "yyyy-MM-dd'T'HH:mm" # time used for adding date
 
 proc `$` (e: Episode): string =
-  result = $e.number & ": " & $e.title
+    result = fmt"""
+    title           : "{e.title}"
+    number          : $e.number
+    special         : "{e.special}"
+    date            : "{format(e.date, timef)}"
+    date_add        : "{format(e.date, timec)}"
+    favourite       : $e.favourite
+    watched         : $e.watched
+    downloaded      : $e.downloaded
+    checked_quality : $e.checked_quality
+    """.unindent
 
 proc alphSort (x, y: string): int =
   try:
@@ -63,10 +73,10 @@ proc newEpisode (path: string, hermit: string): Episode =
   result.special         = entry.getSectionValue("", "special", defaultVal = "")
   result.date            = parse(entry.getSectionValue("", "date"),                                      timef)
   result.datec           = parse(entry.getSectionValue("", "date_add", defaultVal = "2000-01-01T12:00"), timec) # now()
+  result.favourite       = parseBool(entry.getSectionValue("", "favourite"))
   result.watched         = parseBool(entry.getSectionValue("", "watched"))
   result.downloaded      = parseBool(entry.getSectionValue("", "downloaded"))
   result.checked_quality = parseBool(entry.getSectionValue("", "checked_quality"))
-  result.favourite       = parseBool(entry.getSectionValue("", "favourite"))
 
 iterator walkHermits (path: string): string =
   # remember to change '/' in path to '\' (at least on Windows)
@@ -115,10 +125,12 @@ let list_hermits   = newComboBox(walkHermits(fmt"data\{list_seasons.value}\").to
 # episode view and edit
 let season_summary = newTextArea("")
 let ep_picker      = newComboBox(@[" "])
-let ep_favourited  = newLabel("- Favourite -")
-let ep_watched     = newLabel("- Watched -")
-let ep_downloaded  = newLabel("- Downloaded -")
-let ep_checked     = newLabel("- Checked for quality -")
+let ep_favourited  = newLabel("- ~~~~~~~~~~~~ -")
+let ep_watched     = newLabel("- ~~~~~~~~~~~~ -")
+let ep_downloaded  = newLabel("- ~~~~~~~~~~~~ -")
+let ep_checked     = newLabel("- ~~~~~~~~~~~~ -")
+# checkboxes
+let check_watched  = newCheckbox("Show only unwatched")
 # adding episode
 let add_ep_season  = newComboBox(seasons)
 let add_ep_hermit  = newComboBox(hc_data.hermits)
@@ -131,8 +143,10 @@ let add_ep_date_d  = newTextBox("")
 let add_ep         = newButton("Add")
 
 block settings:
-  win.x   = 1200
-  win.y   = 600
+  win.width  = 900
+  win.height = 600
+  info.width = 200
+  ep_picker.width = 400
   picker.frame  = newFrame("Season picker")
   adder.frame   = newFrame("Add new episode")
   info.frame    = newFrame("Info")
@@ -150,6 +164,7 @@ block registry:
   main.add(picker)
   picker.add(list_seasons)
   picker.add(list_hermits)
+  picker.add(check_watched)
   main.add(viewer)
   viewer.add(season_summary)
   viewer.add(editer)
@@ -172,7 +187,7 @@ block registry:
   adder.add(add_ep_date_d)
   adder.add(add_ep)
 
-proc generateSeason (seasonNb: string) =
+proc generateSeason (seasonNb: string, f_watched = check_watched.checked) =
   # resetting old entry
   season_summary.text = ""
   eps_shown.setLen(0)
@@ -189,37 +204,33 @@ proc generateSeason (seasonNb: string) =
   eps_shown.sort(entrySort)
 
   for e in eps_shown:
-    season_summary.addLine(fmt"{e.hermit} - {e.number}: {e.title} | {e.date.month}, {e.date.monthday}") #  | {conversion[e.watched]}:{conversion[e.downloaded]}:{conversion[e.checked_quality]}
-    cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
+    if not (f_watched and e.watched):
+      season_summary.addLine(fmt"{e.hermit} - {e.number}: {e.title} | {e.date.month}, {e.date.monthday}") #  | {conversion[e.watched]}:{conversion[e.downloaded]}:{conversion[e.checked_quality]}
+      cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
   ep_picker.options = cbox
 
-proc updateEntry (entry: string, change: string = "") =
-  let data = split(entry, re"\| |: | - ")
-  let info = newEpisode(fmt"data/{data[0]}/{data[1]}/{data[2]} - {data[3]}.ini", data[1])
-  if change != "":
-    discard
-  case info.favourite:
-    of true:  ep_favourited.text = "Favourite"
-    of false: ep_favourited.text = ""
-  case info.watched:
-    of true:  ep_watched.text = "Watched"
-    of false: ep_watched.text = "Not watched"
-  if hc_data.download:
-    case info.downloaded:
-      of true:  ep_downloaded.text = "Downloaded"
-      of false: ep_downloaded.text = "Missing"
-  if hc_data.quality:
-    case info.checked_quality:
-      of true:  ep_checked.text = "Quality checked"
-      of false: ep_checked.text = "Quality unknown"
+proc updateEntry (entry: string) =
+  if "|" in entry: # avoids None and other edge cases
+    let data = split(entry, re"\| |: | - ")
+    let info = newEpisode(fmt"data/{data[0]}/{data[1]}/{data[2]} - {data[3]}.ini", data[1])
+    case info.favourite:
+      of true:  ep_favourited.text = "Favourite"
+      of false: ep_favourited.text = ""
+    case info.watched:
+      of true:  ep_watched.text = "Watched"
+      of false: ep_watched.text = "Not watched"
+    if hc_data.download:
+      case info.downloaded:
+        of true:  ep_downloaded.text = "Downloaded"
+        of false: ep_downloaded.text = "Missing"
+    if hc_data.quality:
+      case info.checked_quality:
+        of true:  ep_checked.text = "Quality checked"
+        of false: ep_checked.text = "Quality unknown"
 
-  # for status_label, descr in [info.watched:         "Watched",
-  #                             info.downloaded:      "Downloaded",
-  #                             info.checked_quality: "Checked quality",
-  #                             info.favourite:       "Favourited"]:
-  #   case status_label:
-  #     of true:  status_label.text = descr
-  #     of false: status_label.text = "Not " & descr
+proc saveEntry (ep: Episode, season: string) =
+  discard existsOrCreateDir(fmt"data/{season}/{ep.hermit}/")
+  writeFile(fmt"data/{season}/{ep.hermit}/{$ep.number} - {ep.title}.ini", $ep)
 
 list_seasons.onChange = proc (event: ComboBoxChangeEvent) =
   list_hermits.options = walkHermits(fmt"data\{list_seasons.value}\").toSeq
@@ -233,6 +244,14 @@ ep_picker.onChange = proc (event: ComboBoxChangeEvent) =
   updateEntry(ep_picker.value)
 
 add_ep.onClick = proc (event: ClickEvent) =
+  proc processTitle (title: string): string =
+    const chars_out = ["?"]
+    if title == "": return "[No name]"
+    else:
+      result = title
+      for c in chars_out:
+        result = result.replace(c, "")
+
   let req = [
     add_ep_number.text,
     add_ep_date_y.text,
@@ -243,7 +262,7 @@ add_ep.onClick = proc (event: ClickEvent) =
     # format helpers (handles optionality & putting single number, while Nigui requires double even for one-digit ones)
     if add_ep_date_m.text.len == 1: add_ep_date_m.text = fmt"0{add_ep_date_m.text}"
     if add_ep_date_d.text.len == 1: add_ep_date_d.text = fmt"0{add_ep_date_d.text}"
-    if add_ep_title.text == "":     add_ep_title.text = "[No name]"
+    add_ep_title.text = processTitle(add_ep_title.text)
 
     let add_ep_date  = fmt"{add_ep_date_y.text}-{add_ep_date_m.text}-{add_ep_date_d.text}"
     let add_ep_datec = format(now(), timec)
@@ -263,7 +282,12 @@ add_ep.onClick = proc (event: ClickEvent) =
 
     generateSeason(list_seasons.value)
 
+check_watched.onToggle = proc (event: ToggleEvent) =
+  generateSeason(list_seasons.value)
+  updateEntry(ep_picker.value)
+
 generateSeason(list_seasons.value)
+updateEntry(ep_picker.value)
 
 win.show()
 app.run()

@@ -31,4 +31,4 @@ hermits:
   - Xisuma
   - Zedaph
 download: true
-quality: true
+quality: false
