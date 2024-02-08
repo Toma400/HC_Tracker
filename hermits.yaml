@@ -1,5 +1,4 @@
 seasons:
-  - 3
   - 7
   - 8
   - 9
@@ -13,8 +12,10 @@ hermits:
   - False
   - Gem
   - Grian
+  - Hypno
   - Impulse
   - Iskall
+  - Jevin
   - JoeHills
   - Keralis
   - Mumbo Jumbo
@@ -26,9 +27,10 @@ hermits:
   - Stress
   - Tango
   - TFC
+  - VintageBeef
   - Welsknight
   - xBcrafted
   - Xisuma
   - Zedaph
-download: true
-quality: true
+download: false
+quality: false

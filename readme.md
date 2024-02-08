@@ -31,7 +31,7 @@ quality: false
 This file controls what seasons and hermits you can use, so you add seasons or hermits
 simply by putting them in such scheme as shown above.  
 Initially, file will contain all hermits who appeared from season 7 onwards, and
-seasons 8-10. Feel free to curate the list.
+seasons 7-10. Feel free to curate the list.
 
 Two last options, `download` and `quality`, are by default turned off.  
 Those are mostly my personal features that I wanted to add, since I download HC
@@ -46,8 +46,8 @@ hermits having episodes in said season, and by episodes' qualities, such as them
 not being watched, or being marked as favourite.
 
 #### Adding new episodes
-Adder allows you to add new episodes. Simply put respective data into its fields,
-and once you click "Add" button, new entry will be added.  
+Menu at the bottom allows you to add new episodes. Simply put respective data into
+its fields, and once you click "Add" button, new entry will be added.  
 Be aware that if episode title contains symbols like `?`, those will be removed.
 It's sadly limitation of how I made this program work, sorry :<
 
@@ -71,7 +71,9 @@ or [my Discord server](https://discord.gg/GbTw9KqnrE).
 
 You can suggest any ideas too, however be aware that I will implement them only if
 they have enough purpose and also can be implemented within technological limitations
-of Nigui library (which is reason behind a bit ugly interface of current program).
+of Nigui library (which is reason behind a bit ugly interface of current program).  
+I may rewrite this program to different language/library one day, but I wanted this
+to be made relatively fast, so I can make it to Season 10 beginning <3
 
 ### License
 The software code is made under All Rights Reserved, however you can freely download

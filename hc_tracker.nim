@@ -1,4 +1,5 @@
 import std/private/oscommon
+import std/private/osfiles
 import std/private/osdirs
 import std/strformat
 import std/algorithm
@@ -134,6 +135,9 @@ let ep_checked     = newLabel("- ~~~~~~~~~~~~ -")
 # checkboxes
 let check_watched  = newCheckbox("Show only unwatched")
 let check_faved    = newCheckbox("Show only favourited")
+let check_download = newCheckbox("Show only missing")
+let check_checked  = newCheckbox("Show only unchecked")
+let remove_ep      = newButton("Remove")
 # adding episode
 let add_ep_season  = newComboBox(seasons)
 let add_ep_hermit  = newComboBox(hc_data.hermits)
@@ -161,6 +165,7 @@ block settings:
   bt_faved.width      = 100
   bt_downloaded.width = 100
   bt_checked.width    = 100
+  remove_ep.width     = 100
   picker.frame  = newFrame("Season picker")
   filter.frame  = newFrame("Filtering")
   adder.frame   = newFrame("Add new episode")
@@ -187,6 +192,10 @@ block registry:
     upper.add(filter)
     filter.add(check_watched)
     filter.add(check_faved)
+    if hc_data.download:
+      filter.add(check_download)
+    if hc_data.quality:
+      filter.add(check_checked)
   main.add(viewer)
   viewer.add(season_summary)
   viewer.add(editer)
@@ -208,6 +217,7 @@ block registry:
       switch.add(bt_downloaded)
     if hc_data.quality:
       switch.add(bt_checked)
+    switch.add(remove_ep)
   main.add(adder)
   adder.add(add_ep_season)
   adder.add(add_ep_hermit)
@@ -219,7 +229,11 @@ block registry:
   adder.add(add_ep_date_d)
   adder.add(add_ep)
 
-proc generateSeason (seasonNb: string, f_watched = check_watched.checked, f_faved = check_faved.checked) =
+proc generateSeason (seasonNb: string,
+                     f_watched    = check_watched.checked,
+                     f_faved      = check_faved.checked,
+                     f_downloaded = check_download.checked,
+                     f_checked    = check_checked.checked) =
   # resetting old entry
   season_summary.text = ""
   eps_shown.setLen(0)
@@ -237,8 +251,9 @@ proc generateSeason (seasonNb: string, f_watched = check_watched.checked, f_fave
 
   for e in eps_shown:
     if not (f_watched and e.watched) and not (f_faved and not e.favourite):
-      season_summary.addLine(fmt"{e.hermit} - {e.number}: {e.title} | {e.date.month}, {e.date.monthday}") #  | {conversion[e.watched]}:{conversion[e.downloaded]}:{conversion[e.checked_quality]}
-      cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
+      if not (f_downloaded and e.downloaded) and not (f_checked and e.checked_quality):
+        season_summary.addLine(fmt"{e.hermit} - {e.number}: {e.title} | {e.date.month}, {e.date.monthday}") #  | {conversion[e.watched]}:{conversion[e.downloaded]}:{conversion[e.checked_quality]}
+        cbox.add(fmt"{seasonNb}| {e.hermit} - {e.number}: {e.title}")
   ep_picker.options = cbox
 
 proc parseComboboxEntry (entry: string): Episode =
@@ -272,6 +287,9 @@ proc saveEntry (ep: Episode, season: string) =
   discard existsOrCreateDir(fmt"data/{season}/{ep.hermit}/")
   writeFile(fmt"data/{season}/{ep.hermit}/{$ep.number} - {ep.title}.ini", $ep)
 
+proc removeEntry (ep: Episode, season: string) =
+  discard tryRemoveFile(fmt"data/{season}/{ep.hermit}/{$ep.number} - {ep.title}.ini")
+
 list_seasons.onChange = proc (event: ComboBoxChangeEvent) =
   list_hermits.options = walkHermits(fmt"data\{list_seasons.value}\").toSeq
   generateSeason(list_seasons.value)
@@ -290,6 +308,8 @@ add_ep.onClick = proc (event: ClickEvent) =
     if title == "": return "[No name]"
     else:
       result = title
+      if "-" in title:
+        result = result.replace("-", "–")
       for c in chars_out:
         result = result.replace(c, "")
 
@@ -355,11 +375,24 @@ bt_checked.onClick = proc (event: ClickEvent) =
     generateSeason(list_seasons.value)
     updateEntry()
 
+remove_ep.onClick = proc (event: ClickEvent) =
+  removeEntry(parseComboboxEntry(ep_picker.value), list_seasons.value)
+  generateSeason(list_seasons.value)
+  updateEntry()
+
 check_watched.onToggle = proc (event: ToggleEvent) =
   generateSeason(list_seasons.value)
   updateEntry()
 
 check_faved.onToggle = proc (event: ToggleEvent) =
+  generateSeason(list_seasons.value)
+  updateEntry()
+
+check_download.onToggle = proc (event: ToggleEvent) =
+  generateSeason(list_seasons.value)
+  updateEntry()
+
+check_checked.onToggle = proc (event: ToggleEvent) =
   generateSeason(list_seasons.value)
   updateEntry()
 
