@@ -1,6 +1,5 @@
 import std/private/oscommon
 import std/private/osdirs
-import system/nimscript
 import std/strformat
 import std/algorithm
 import std/parsecfg
@@ -10,7 +9,6 @@ import std/re
 import questionable
 import strutils
 import streams
-import tables
 import yaml
 import nigui
 
@@ -147,17 +145,22 @@ let add_ep_date_m  = newTextBox("")
 let add_ep_date_d  = newTextBox("")
 let add_ep         = newButton("Add")
 # buttons
-let bt_watched = newButton("Watched?")
-let bt_faved   = newButton("Favourited?")
+let bt_watched    = newButton("Watched?")
+let bt_faved      = newButton("Favourited?")
+let bt_downloaded = newButton("Downloaded?")
+let bt_checked    = newButton("Quality checked?")
 
 block settings:
   win.width  = 900
   win.height = 600
   info.width = 100
   switch.width = 150
-  ep_picker.width = 400
-  bt_watched.width = 100
-  bt_faved.width   = 100
+  picker.width        = 300
+  ep_picker.width     = 400
+  bt_watched.width    = 100
+  bt_faved.width      = 100
+  bt_downloaded.width = 100
+  bt_checked.width    = 100
   picker.frame  = newFrame("Season picker")
   filter.frame  = newFrame("Filtering")
   adder.frame   = newFrame("Add new episode")
@@ -201,6 +204,10 @@ block registry:
     bditer.add(switch)
     switch.add(bt_watched)
     switch.add(bt_faved)
+    if hc_data.download:
+      switch.add(bt_downloaded)
+    if hc_data.quality:
+      switch.add(bt_checked)
   main.add(adder)
   adder.add(add_ep_season)
   adder.add(add_ep_hermit)
@@ -328,6 +335,22 @@ bt_faved.onClick = proc (event: ClickEvent) =
   if "|" in ep_picker.value: # avoids None and other edge cases
     var ep = parseComboboxEntry(ep_picker.value)
     ep.favourite = not ep.favourite
+    saveEntry(ep, list_seasons.value)
+    generateSeason(list_seasons.value)
+    updateEntry()
+
+bt_downloaded.onClick = proc (event: ClickEvent) =
+  if "|" in ep_picker.value: # avoids None and other edge cases
+    var ep = parseComboboxEntry(ep_picker.value)
+    ep.downloaded = not ep.downloaded
+    saveEntry(ep, list_seasons.value)
+    generateSeason(list_seasons.value)
+    updateEntry()
+
+bt_checked.onClick = proc (event: ClickEvent) =
+  if "|" in ep_picker.value: # avoids None and other edge cases
+    var ep = parseComboboxEntry(ep_picker.value)
+    ep.checked_quality = not ep.checked_quality
     saveEntry(ep, list_seasons.value)
     generateSeason(list_seasons.value)
     updateEntry()
