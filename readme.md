@@ -1,5 +1,5 @@
-# HermitCraft Tracker
-HermitCraft tracker is small software I designed to keep my HermitCraft watchlist
+# HC Tracker
+HC Tracker is small software I designed to keep my HermitCraft watchlist
 of episodes cleaner, as I were a bit lost keeping track of it on paper.
 
 - [Installation & preparation](#1-installation--preparation)
