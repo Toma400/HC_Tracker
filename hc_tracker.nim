@@ -347,6 +347,7 @@ bt_watched.onClick = proc (event: ClickEvent) =
   if "|" in ep_picker.value: # avoids None and other edge cases
     var ep = parseComboboxEntry(ep_picker.value)
     ep.watched = not ep.watched
+    ep.datec   = format(now(), timec)
     saveEntry(ep, list_seasons.value)
     generateSeason(list_seasons.value)
     updateEntry()
