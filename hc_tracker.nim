@@ -5,6 +5,7 @@ import std/strformat
 import std/algorithm
 import std/parsecfg
 import std/sequtils
+import std/strutils
 import std/times
 import std/re
 import questionable
@@ -33,8 +34,8 @@ type
     quality  : bool
 
 const
-  timef = "yyyy-MM-dd"         # time used for episode date
-  timec = "yyyy-MM-dd'T'HH:mm" # time used for adding date
+  timef = "yyyy-MM-dd"            # time used for episode date
+  timec = "yyyy-MM-dd'T'HH:mm:ss" # time used for adding date
 
 proc `$` (e: Episode): string =
     result = fmt"""
@@ -66,12 +67,15 @@ proc entrySort (x, y: Episode): int = # most recent on top
 
 proc newEpisode (path: string, hermit: string): Episode =
   let entry = loadConfig(path)
+  var datec = entry.getSectionValue("", "date_add", defaultVal = format(now(), timec))
+  if count(datec, ':') == 1:
+    datec = datec & ":00" # correct earlier value that didn't count seconds
   result.title           = entry.getSectionValue("", "title")
   result.hermit          = hermit
   result.number          = parseInt(entry.getSectionValue("", "number"))
   result.special         = entry.getSectionValue("", "special", defaultVal = "")
-  result.date            = parse(entry.getSectionValue("", "date"),                                      timef)
-  result.datec           = parse(entry.getSectionValue("", "date_add", defaultVal = "2000-01-01T12:00"), timec) # now()
+  result.date            = parse(entry.getSectionValue("", "date"), timef)
+  result.datec           = parse(datec,                             timec)
   result.favourite       = parseBool(entry.getSectionValue("", "favourite"))
   result.watched         = parseBool(entry.getSectionValue("", "watched"))
   result.downloaded      = parseBool(entry.getSectionValue("", "downloaded"))
